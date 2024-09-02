@@ -1,0 +1,36 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Build Docker image
+      run: docker build -t game-server:${GITHUB_SHA} .
+    
+    - name: Run Docker container
+      run: docker run -d -p 5000:5000 --name game-server game-server:${GITHUB_SHA}
+    
+    - name: Wait for container to start
+      run: sleep 10
+    
+    - name: Test the application
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000)
+        if [ $response = "200" ]; then
+          echo "Application is running correctly"
+        else
+          echo "Application is not running correctly"
+          exit 1
+        fi
+    
+    - name: Stop and remove container
+      run: docker stop game-server && docker rm game-server
